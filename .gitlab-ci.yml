@@ -1,0 +1,111 @@
+stages:
+  - check
+  - build
+  - test
+  - deploy
+
+variables:
+  GO_IMAGE: golang:1.20 # Укажите актуальную версию Golang
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE/$SERVICE:$CI_COMMIT_SHORT_SHA
+  GIT_STRATEGY: clone   # Указываем стратегию клонирования репозитория
+
+before_script:
+  - echo "Starting GitLab CI pipeline for API Gateway"
+
+check_changes:
+  stage: check
+  image: alpine:3.17
+  script:
+    - echo "Checking for changes..."
+    - |
+      if git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^API Gateway/'; then
+        echo "API Gateway changed."
+        echo "API_GATEWAY" > service.txt
+      elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^Deployment Service/'; then
+        echo "Deployment Service changed."
+        echo "DEPLOYMENT_SERVICE" > service.txt
+      elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^Integration Manager/'; then
+        echo "Integration Manager changed."
+        echo "INTEGRATION_MANAGER" > service.txt
+      elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^Template Service/'; then
+        echo "Template Service changed."
+        echo "TEMPLATE_SERVICE" > service.txt
+      else
+        echo "No significant changes detected."
+        echo "NONE" > service.txt
+      fi
+  artifacts:
+    paths:
+      - service.txt
+
+build:
+  stage: build
+  image: $GO_IMAGE
+  script:
+    - export SERVICE=$(cat service.txt)
+    - if [ "$SERVICE" = "API_GATEWAY" ]; then
+        echo "Building API Gateway...";
+        go build -o api-gateway ./API\ Gateway;
+      elif [ "$SERVICE" = "DEPLOYMENT_SERVICE" ]; then
+        echo "Building Deployment Service...";
+        go build -o deployment-service ./Deployment\ Service;
+      elif [ "$SERVICE" = "INTEGRATION_MANAGER" ]; then
+        echo "Building Integration Manager...";
+        go build -o integration-manager ./Integration\ Manager;
+      elif [ "$SERVICE" = "TEMPLATE_SERVICE" ]; then
+        echo "Building Template Service...";
+        go build -o template-service ./Template\ Service;
+      else
+        echo "No service to build.";
+      fi
+  artifacts:
+    paths:
+      - api-gateway
+      - deployment-service
+      - integration-manager
+      - template-service
+  dependencies:
+    - check_changes
+
+test:
+  stage: test
+  image: $GO_IMAGE
+  script:
+    - export SERVICE=$(cat service.txt)
+    - if [ "$SERVICE" = "API_GATEWAY" ]; then
+        echo "Running tests for API Gateway...";
+        go test ./API\ Gateway/...;
+      elif [ "$SERVICE" = "DEPLOYMENT_SERVICE" ]; then
+        echo "Running tests for Deployment Service...";
+        go test ./Deployment\ Service/...;
+      elif [ "$SERVICE" = "INTEGRATION_MANAGER" ]; then
+        echo "Running tests for Integration Manager...";
+        go test ./Integration\ Manager/...;
+      elif [ "$SERVICE" = "TEMPLATE_SERVICE" ]; then
+        echo "Running tests for Template Service...";
+        go test ./Template\ Service/...;
+      else
+        echo "No tests to run.";
+      fi
+  dependencies:
+    - build
+
+deploy:
+  stage: deploy
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - export SERVICE=$(cat service.txt)
+    - if [ "$SERVICE" != "NONE" ]; then
+        echo "Building Docker image for $SERVICE...";
+        docker build -t $CI_REGISTRY_IMAGE/$SERVICE:$CI_COMMIT_SHORT_SHA ./$SERVICE;
+        echo "Pushing Docker image for $SERVICE...";
+        docker push $CI_REGISTRY_IMAGE/$SERVICE:$CI_COMMIT_SHORT_SHA;
+      else
+        echo "No service to deploy.";
+      fi
+  only:
+    - main
+  dependencies:
+    - test
