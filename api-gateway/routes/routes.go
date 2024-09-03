@@ -7,7 +7,7 @@ import (
 )
 func SetupRouter() *gin.Engine {
     router := gin.Default()
-
+//
     router.Use(middlewares.LoggingMiddleware())
     router.Use(middlewares.AuthMiddleware())
 
