@@ -1,5 +1,12 @@
 include:
-  - component: $CI_SERVER_FQDN/components/go/full-pipeline@1.0.0
+  - component: gitlab.com/components/go/full-pipeline@1.0.0
 
 variables:
   go_image: 1.22.5
+
+stages:
+  # Component specific stages
+  - format
+  - build
+  - test
+  - verify
