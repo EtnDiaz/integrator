@@ -5,17 +5,18 @@ stages:
   - deploy
 
 variables:
-  GO_IMAGE: golang:1.20 # Укажите актуальную версию Golang
-  DOCKER_IMAGE: $CI_REGISTRY_IMAGE/$SERVICE:$CI_COMMIT_SHORT_SHA
+  GO_IMAGE: golang:1.20 # Используем актуальную версию Golang
   GIT_STRATEGY: clone   # Указываем стратегию клонирования репозитория
 
 before_script:
-  - echo "Starting GitLab CI pipeline for API Gateway"
+  - echo "Starting GitLab CI pipeline"
 
 check_changes:
   stage: check
-  image: alpine/git:2.45.2
+  image: alpine:3.17
   script:
+    - echo "Installing git..."
+    - apk add --no-cache git  # Устанавливаем git в Alpine
     - echo "Checking for changes..."
     - |
       if git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^API Gateway/'; then
@@ -30,10 +31,12 @@ check_changes:
       elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^Template Service/'; then
         echo "Template Service changed."
         echo "TEMPLATE_SERVICE" > service.txt
+      elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^shared/'; then
+        echo "Shared components changed. Rebuilding all services."
+        echo "ALL" > service.txt
       else
         echo "No significant changes detected."
         echo "NONE" > service.txt
-      fi
   artifacts:
     paths:
       - service.txt
