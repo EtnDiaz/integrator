@@ -1,10 +1,10 @@
 package routes
 
 import (
-    "github.com/gin-gonic/gin"
-    "template-service/controllers"
-    "template-service/middlewares"
-    "template-service/services"
+    "github.com/gin-gonic/gin" // Missing import for gin
+    "gitlab.com/roneeSoft/integrator/internal/template-service/controllers"
+    "gitlab.com/roneeSoft/integrator/internal/template-service/services"
+    "gitlab.com/roneeSoft/integrator/pkg/shared/middlewares"
 )
 
 func SetupRouter() *gin.Engine {

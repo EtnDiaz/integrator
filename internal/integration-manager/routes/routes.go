@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gitlab.com/roneeSoft/integrator/internal/api-gateway/controllers"
 	"gitlab.com/roneeSoft/integrator/pkg/shared/middlewares"
+
 )
 
 func SetupRouter() *gin.Engine {
