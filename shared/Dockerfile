@@ -2,12 +2,14 @@ FROM golang:1.22.5 AS builder
 
 WORKDIR /app
 
-ARG SERVICE_NAME
-
 COPY shared/middlewares /app/shared/middlewares
 COPY shared/utils /app/shared/utils
 COPY shared/config /app/shared/config
 
+ARG SERVICE_NAME
+
+COPY ${SERVICE_NAME}/go.mod /app/${SERVICE_NAME}/
+COPY ${SERVICE_NAME}/go.sum /app/${SERVICE_NAME}/
 COPY ${SERVICE_NAME}/ /app/${SERVICE_NAME}/
 
 WORKDIR /app/${SERVICE_NAME}
