@@ -14,7 +14,7 @@ before_script:
 
 check_changes:
   stage: check
-  image: alpine:3.17
+  image: alpine/git:2.45.2
   script:
     - echo "Checking for changes..."
     - |
@@ -43,20 +43,21 @@ build:
   image: $GO_IMAGE
   script:
     - export SERVICE=$(cat service.txt)
-    - if [ "$SERVICE" = "API_GATEWAY" ]; then
+    - if [ "$SERVICE" = "API_GATEWAY" ] || [ "$SERVICE" = "ALL" ]; then
         echo "Building API Gateway...";
         go build -o api-gateway ./API\ Gateway;
-      elif [ "$SERVICE" = "DEPLOYMENT_SERVICE" ]; then
+      fi
+    - if [ "$SERVICE" = "DEPLOYMENT_SERVICE" ] || [ "$SERVICE" = "ALL" ]; then
         echo "Building Deployment Service...";
         go build -o deployment-service ./Deployment\ Service;
-      elif [ "$SERVICE" = "INTEGRATION_MANAGER" ]; then
+      fi
+    - if [ "$SERVICE" = "INTEGRATION_MANAGER" ] || [ "$SERVICE" = "ALL" ]; then
         echo "Building Integration Manager...";
         go build -o integration-manager ./Integration\ Manager;
-      elif [ "$SERVICE" = "TEMPLATE_SERVICE" ]; then
+      fi
+    - if [ "$SERVICE" = "TEMPLATE_SERVICE" ] || [ "$SERVICE" = "ALL" ]; then
         echo "Building Template Service...";
         go build -o template-service ./Template\ Service;
-      else
-        echo "No service to build.";
       fi
   artifacts:
     paths:
@@ -72,20 +73,21 @@ test:
   image: $GO_IMAGE
   script:
     - export SERVICE=$(cat service.txt)
-    - if [ "$SERVICE" = "API_GATEWAY" ]; then
+    - if [ "$SERVICE" = "API_GATEWAY" ] || [ "$SERVICE" = "ALL" ]; then
         echo "Running tests for API Gateway...";
         go test ./API\ Gateway/...;
-      elif [ "$SERVICE" = "DEPLOYMENT_SERVICE" ]; then
+      fi
+    - if [ "$SERVICE" = "DEPLOYMENT_SERVICE" ] || [ "$SERVICE" = "ALL" ]; then
         echo "Running tests for Deployment Service...";
         go test ./Deployment\ Service/...;
-      elif [ "$SERVICE" = "INTEGRATION_MANAGER" ]; then
+      fi
+    - if [ "$SERVICE" = "INTEGRATION_MANAGER" ] || [ "$SERVICE" = "ALL" ]; then
         echo "Running tests for Integration Manager...";
         go test ./Integration\ Manager/...;
-      elif [ "$SERVICE" = "TEMPLATE_SERVICE" ]; then
+      fi
+    - if [ "$SERVICE" = "TEMPLATE_SERVICE" ] || [ "$SERVICE" = "ALL" ]; then
         echo "Running tests for Template Service...";
         go test ./Template\ Service/...;
-      else
-        echo "No tests to run.";
       fi
   dependencies:
     - build
@@ -98,10 +100,30 @@ deploy:
   script:
     - export SERVICE=$(cat service.txt)
     - if [ "$SERVICE" != "NONE" ]; then
-        echo "Building Docker image for $SERVICE...";
-        docker build -t $CI_REGISTRY_IMAGE/$SERVICE:$CI_COMMIT_SHORT_SHA ./$SERVICE;
-        echo "Pushing Docker image for $SERVICE...";
-        docker push $CI_REGISTRY_IMAGE/$SERVICE:$CI_COMMIT_SHORT_SHA;
+        if [ "$SERVICE" = "API_GATEWAY" ] || [ "$SERVICE" = "ALL" ]; then
+            echo "Building Docker image for API Gateway...";
+            docker build -t $CI_REGISTRY_IMAGE/api-gateway:$CI_COMMIT_SHORT_SHA ./API\ Gateway;
+            echo "Pushing Docker image for API Gateway...";
+            docker push $CI_REGISTRY_IMAGE/api-gateway:$CI_COMMIT_SHORT_SHA;
+        fi
+        if [ "$SERVICE" = "DEPLOYMENT_SERVICE" ] || [ "$SERVICE" = "ALL" ]; then
+            echo "Building Docker image for Deployment Service...";
+            docker build -t $CI_REGISTRY_IMAGE/deployment-service:$CI_COMMIT_SHORT_SHA ./Deployment\ Service;
+            echo "Pushing Docker image for Deployment Service...";
+            docker push $CI_REGISTRY_IMAGE/deployment-service:$CI_COMMIT_SHORT_SHA;
+        fi
+        if [ "$SERVICE" = "INTEGRATION_MANAGER" ] || [ "$SERVICE" = "ALL" ]; then
+            echo "Building Docker image for Integration Manager...";
+            docker build -t $CI_REGISTRY_IMAGE/integration-manager:$CI_COMMIT_SHORT_SHA ./Integration\ Manager;
+            echo "Pushing Docker image for Integration Manager...";
+            docker push $CI_REGISTRY_IMAGE/integration-manager:$CI_COMMIT_SHORT_SHA;
+        fi
+        if [ "$SERVICE" = "TEMPLATE_SERVICE" ] || [ "$SERVICE" = "ALL" ]; then
+            echo "Building Docker image for Template Service...";
+            docker build -t $CI_REGISTRY_IMAGE/template-service:$CI_COMMIT_SHORT_SHA ./Template\ Service;
+            echo "Pushing Docker image for Template Service...";
+            docker push $CI_REGISTRY_IMAGE/template-service:$CI_COMMIT_SHORT_SHA;
+        fi
       else
         echo "No service to deploy.";
       fi

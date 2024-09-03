@@ -2,8 +2,9 @@ package routes
 
 import (
     "github.com/gin-gonic/gin"
-    "api-gateway/controllers"
+    "deployment-service/controllers"
     "shared/middlewares"
+)
 
 func SetupRouter() *gin.Engine {
     router := gin.Default()
@@ -11,11 +12,10 @@ func SetupRouter() *gin.Engine {
     router.Use(middlewares.LoggingMiddleware())
     router.Use(middlewares.AuthMiddleware())
 
-    integrationController := controllers.IntegrationController{}
+    deploymentController := controllers.DeploymentController{}
     healthController := controllers.HealthController{}
 
-    router.GET("/integrations/:id", integrationController.GetIntegration)
-    router.POST("/integrations", integrationController.CreateIntegration)
+    router.POST("/deploy", deploymentController.Deploy)
     router.GET("/health", healthController.HealthCheck)
 
     return router

@@ -2,19 +2,17 @@ package main
 
 import (
     "shared/config"
-    "api-gateway/routes"
+    "integration-manager/routes"
     "log"
 )
 
 func main() {
-    // Загрузка конфигурации
     config.LoadConfig()
 
-    // Настройка роутов
     router := routes.SetupRouter()
 
     // Запуск сервера
-    if err := router.Run(":8080"); err != nil {
+    if err := router.Run(":8082"); err != nil {
         log.Fatalf("Failed to run server: %v", err)
     }
 }
