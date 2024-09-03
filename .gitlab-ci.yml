@@ -10,3 +10,34 @@ stages:
   - build
   - test
   - verify
+  - docker-prepare
+  - docker-build
+  - docker-deploy
+  
+prepare:
+  stage: docker-prepare
+  script:
+    - mkdir -p tmp
+    - find cmd/ -maxdepth 1 -mindepth 1 -type d -exec basename {} \; > tmp/services_list.txt
+  artifacts:
+    paths:
+      - tmp/services_list.txt
+
+build_services:
+  stage: docker-build
+
+  script:
+    - |
+      for service in $(cat tmp/services_list.txt); do
+        echo "Building service: $service"
+        docker build --build-arg SERVICE_NAME=$service -t $CI_REGISTRY_IMAGE/$service:latest -f pkg/shared/Dockerfile ./cmd/$service;
+      done
+
+deploy_services:
+  stage: docker-deploy
+  script:
+    - |
+      for service in $(cat tmp/services_list.txt); do
+        echo "Deploying service: $service"
+        docker push $CI_REGISTRY_IMAGE/$service:latest;
+      done
