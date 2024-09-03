@@ -1,9 +1,9 @@
 package main
 
 import (
-    "deployment-service/routes"
+    "gitlab.com/roneeSoft/integrator/deployment-service/routes"
     "log"
-    "shared/config"
+    "gitlab.com/roneeSoft/integrator/shared/config"
 )
 
 func main() {

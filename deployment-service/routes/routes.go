@@ -2,8 +2,8 @@ package routes
 
 import (
     "github.com/gin-gonic/gin"
-    "deployment-service/controllers"
-    "shared/middlewares"
+    "gitlab.com/roneeSoft/integrator/deployment-service/controllers"
+    "gitlab.com/roneeSoft/integrator/shared/middlewares"
 )
 
 func SetupRouter() *gin.Engine {

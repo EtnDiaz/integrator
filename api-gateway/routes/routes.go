@@ -2,8 +2,8 @@ package routes
 
 import (
     "github.com/gin-gonic/gin"
-    "api-gateway/controllers"
-    "shared/middlewares"
+    "gitlab.com/roneeSoft/integrator/api-gateway/controllers"
+    "gitlab.com/roneeSoft/integrator/shared/middlewares"
 )
 func SetupRouter() *gin.Engine {
     router := gin.Default()

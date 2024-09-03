@@ -3,8 +3,8 @@ package controllers
 import (
     "net/http"
     "github.com/gin-gonic/gin"
-    "integration-manager/services"
-    "shared/utils"
+    "gitlab.com/roneeSoft/integrator/integration-manager/services"
+    "gitlab.com/roneeSoft/integrator/shared/utils"
 )
 
 type IntegrationController struct {

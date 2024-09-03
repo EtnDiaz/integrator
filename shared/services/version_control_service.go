@@ -1,4 +1,3 @@
-// shared/services/version_control_service.go
 package services
 
 import "errors"
