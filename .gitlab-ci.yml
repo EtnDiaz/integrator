@@ -5,7 +5,7 @@ stages:
   - deploy
 
 variables:
-  GIT_STRATEGY: clone   # Указываем стратегию клонирования репозитория
+  GIT_STRATEGY: clone   
 
 before_script:
   - echo "Starting GitLab CI pipeline"
