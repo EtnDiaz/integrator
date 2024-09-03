@@ -31,7 +31,7 @@ check_changes:
       elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^shared/'; then
         CHANGED_SERVICE="all"
       fi
-      echo $CHANGED_SERVICE > service.txt
+      echo $CHANGED_SERVICE > ${SERVICE}
   artifacts:
     paths:
       - service.txt
@@ -54,13 +54,13 @@ build_service:
       fi
   dependencies:
     - check_changes
-  only:
-    changes:
-      - api-gateway/**
-      - deployment-service/**
-      - integration-manager/**
-      - template-service/**
-      - shared/**
+  # only:
+  #   changes:
+  #     - api-gateway/**
+  #     - deployment-service/**
+  #     - integration-manager/**
+  #     - template-service/**
+  #     - shared/**
 
 deploy_service:
   stage: deploy
@@ -68,8 +68,8 @@ deploy_service:
   services:
     - docker:dind
   script:
-    - export SERVICE=$(cat service.txt)
-    - if [ "$SERVICE" != "ALL" ]; then
+    - export ${SERVICE}
+    - if [ "$SERVICE" != "all" ]; then
         echo "Pushing Docker image for $SERVICE...";
         docker push $CI_REGISTRY_IMAGE/${SERVICE// /-}:$CI_COMMIT_SHORT_SHA;
       else
