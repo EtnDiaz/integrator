@@ -5,7 +5,6 @@ import (
     "api-gateway/controllers"
     "shared/middlewares"
 )
-// fix
 func SetupRouter() *gin.Engine {
     router := gin.Default()
 

@@ -1,23 +1,32 @@
-package middlewares
+package utils
 
 import (
-    "time"
-    "github.com/gin-gonic/gin"
     "log"
+    "os"
 )
 
-func LoggingMiddleware() gin.HandlerFunc {
-    return func(c *gin.Context) {
-        startTime := time.Now()
+type Logger struct {
+    logger *log.Logger
+}
 
-        c.Next()
-
-        latency := time.Since(startTime)
-        log.Printf("Request: %s %s | Latency: %s | Status: %d",
-            c.Request.Method,
-            c.Request.URL.Path,
-            latency,
-            c.Writer.Status(),
-        )
+func NewLogger(prefix string) *Logger {
+    return &Logger{
+        logger: log.New(os.Stdout, prefix, log.LstdFlags|log.Lshortfile),
     }
+}
+
+func (l *Logger) Info(message string) {
+    l.logger.Println("[INFO] " + message)
+}
+
+func (l *Logger) Warning(message string) {
+    l.logger.Println("[WARNING] " + message)
+}
+
+func (l *Logger) Error(message string) {
+    l.logger.Println("[ERROR] " + message)
+}
+
+func (l *Logger) Fatal(message string) {
+    l.logger.Fatalln("[FATAL] " + message)
 }

@@ -6,7 +6,7 @@ stages:
 
 variables:
   GIT_STRATEGY: clone
-  DOCKER_DRIVER: overlay2  
+  DOCKER_DRIVER: overlay2
 
 before_script:
   - echo "Starting GitLab CI pipeline"
@@ -14,6 +14,8 @@ before_script:
 check_changes:
   stage: check
   image: alpine:3.17
+  before_script:
+    - apk add --no-cache git
   script:
     - echo "Checking for changes..."
     - CHANGED_SERVICE="none"
