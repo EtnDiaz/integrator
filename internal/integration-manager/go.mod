@@ -1,3 +1,3 @@
-module gitlab.com/roneeSoft/integrator/integration-manager
+module gitlab.com/roneeSoft/integrator/internal/integration-manager
 
 go 1.22.5

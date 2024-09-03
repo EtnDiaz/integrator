@@ -1,3 +1,3 @@
-module gitlab.com/roneeSoft/integrator/shared/services
+module gitlab.com/roneeSoft/integrator/pkg/shared/services
 
 go 1.22.5

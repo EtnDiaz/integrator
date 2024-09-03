@@ -1,8 +1,8 @@
 package main
 
 import (
-    "gitlab.com/roneeSoft/integrator/shared/config"
-    "gitlab.com/roneeSoft/integrator/api-gateway/routes"
+    "gitlab.com/roneeSoft/integrator/pkg/shared/config"
+    "gitlab.com/roneeSoft/integrator/internal/api-gateway/routes"
     "log"
 )
 
