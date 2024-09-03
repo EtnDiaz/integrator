@@ -3,7 +3,7 @@ package controllers
 import (
     "net/http"
     "github.com/gin-gonic/gin"
-    "api-gateway/utils"
+    "shared/utils"
 )
 
 type IntegrationController struct {}

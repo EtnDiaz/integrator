@@ -4,7 +4,7 @@ import (
     "net/http"
     "github.com/gin-gonic/gin"
     "integration-manager/services"
-    "integration-manager/utils"
+    "shared/utils"
 )
 
 type IntegrationController struct {
