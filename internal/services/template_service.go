@@ -1,9 +1,8 @@
-// services/template_service.go
 package services
 
 import (
-    "shared/services"
-    "shared/utils"
+    "errors" // Import the errors package
+    "gitlab.com/roneeSoft/integrator/pkg/shared/services"
 )
 
 type Template struct {
@@ -16,10 +15,21 @@ type TemplateService struct {
     baseService *services.BaseService[Template]
 }
 
+// NewTemplateService initializes a new TemplateService
 func NewTemplateService() *TemplateService {
     return &TemplateService{
         baseService: services.NewBaseService[Template](),
     }
+}
+
+// GetByID retrieves a template by its ID
+func (s *TemplateService) GetByID(id string) (*Template, error) {
+    // Use baseService to get the template
+    template, err := s.baseService.Get(id)
+    if err != nil {
+        return nil, errors.New("template not found")
+    }
+    return &template, nil
 }
 
 func (s *TemplateService) Create(template Template) error {

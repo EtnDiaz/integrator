@@ -1,16 +1,17 @@
 package routes
 
 import (
-    "github.com/gin-gonic/gin" // Missing import for gin
+    "github.com/gin-gonic/gin"
     "gitlab.com/roneeSoft/integrator/internal/template-service/controllers"
-    "gitlab.com/roneeSoft/integrator/internal/template-service/services"
+    "gitlab.com/roneeSoft/integrator/internal/services"
     "gitlab.com/roneeSoft/integrator/pkg/shared/middlewares"
 )
 
-func SetupRouter() *gin.Engine {
+func SetupRouter(logger *middlewares.Logger) *gin.Engine {
     router := gin.Default()
 
-    router.Use(middlewares.LoggingMiddleware())
+    // Pass the logger instance to the LoggingMiddleware
+    router.Use(middlewares.LoggingMiddleware(logger))
     router.Use(middlewares.AuthMiddleware())
 
     templateService := services.NewTemplateService()

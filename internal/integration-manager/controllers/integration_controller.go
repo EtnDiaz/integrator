@@ -1,17 +1,18 @@
+// controllers/integration_controller.go
 package controllers
 
 import (
-	"github.com/gin-gonic/gin"
-	"gitlab.com/roneeSoft/integrator/internal/integration-manager/services"
-	"gitlab.com/roneeSoft/integrator/pkg/shared/utils"
 	"net/http"
+	"github.com/gin-gonic/gin"
+	"gitlab.com/roneeSoft/integrator/internal/services"
+	"gitlab.com/roneeSoft/integrator/pkg/shared/utils"
 )
 
 type IntegrationController struct {
-	Service services.IntegrationService
+	Service *services.IntegrationService
 }
 
-func (ctrl IntegrationController) CreateIntegration(c *gin.Context) {
+func (ctrl *IntegrationController) CreateIntegration(c *gin.Context) {
 	var integration services.Integration
 	if err := c.ShouldBindJSON(&integration); err != nil {
 		c.JSON(http.StatusBadRequest, utils.Response{Message: "Invalid request", Data: nil})
@@ -27,7 +28,7 @@ func (ctrl IntegrationController) CreateIntegration(c *gin.Context) {
 	c.JSON(http.StatusCreated, utils.Response{Message: "Integration created successfully", Data: integration})
 }
 
-func (ctrl IntegrationController) GetIntegration(c *gin.Context) {
+func (ctrl *IntegrationController) GetIntegration(c *gin.Context) {
 	id := c.Param("id")
 	integration, err := ctrl.Service.Get(id)
 	if err != nil {
@@ -38,7 +39,7 @@ func (ctrl IntegrationController) GetIntegration(c *gin.Context) {
 	c.JSON(http.StatusOK, utils.Response{Message: "Integration fetched successfully", Data: integration})
 }
 
-func (ctrl IntegrationController) DeleteIntegration(c *gin.Context) {
+func (ctrl *IntegrationController) DeleteIntegration(c *gin.Context) {
 	id := c.Param("id")
 	err := ctrl.Service.Delete(id)
 	if err != nil {

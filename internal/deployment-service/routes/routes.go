@@ -6,12 +6,15 @@ import (
 	"gitlab.com/roneeSoft/integrator/pkg/shared/middlewares"
 )
 
-func SetupRouter() *gin.Engine {
-	router := gin.Default()
 
-	router.Use(middlewares.LoggingMiddleware())
-	router.Use(middlewares.AuthMiddleware())
+func SetupRouter(logger *middlewares.Logger) *gin.Engine {
+    router := gin.Default()
 
+    // Pass the logger instance to the LoggingMiddleware
+    router.Use(middlewares.LoggingMiddleware(logger))
+    router.Use(middlewares.AuthMiddleware())
+
+	
 	deploymentController := controllers.DeploymentController{}
 	healthController := controllers.HealthController{}
 
