@@ -16,11 +16,9 @@ stages:
   - test
   - verify
   - prepare
-  - upload
   - docker-build
   - deploy
 
-# Подготовка списка сервисов
 prepare:
   stage: prepare
   script:
@@ -30,21 +28,6 @@ prepare:
     paths:
       - tmp/services_list.txt
 
-
-# Загрузка бинарных файлов
-upload:
-  stage: upload
-  image: curlimages/curl:latest
-  rules:
-    - if: $CI_COMMIT_TAG
-  script:
-    - |
-      for service in $(cat tmp/services_list.txt); do
-        echo "Uploading binary for: $service"
-        curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" --upload-file ${binary_directory}/$service ${PACKAGE_REGISTRY_URL}/$service-${CI_COMMIT_TAG}
-      done
-
-# Сборка Docker образов для каждого микросервиса с использованием DinD
 docker-build:
   stage: docker-build
   image: docker:20.10.16
@@ -53,14 +36,14 @@ docker-build:
   script:
     - |
       for service in $(cat tmp/services_list.txt); do
-        echo "Building Docker image for: $service"
-        docker build --build-arg SERVICE_NAME=$service -t $CI_REGISTRY_IMAGE/$service:latest -f pkg/shared/Dockerfile ./cmd/$service
+        IMAGE_TAG=${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}
+        echo "Building Docker image for: $service with tag: $IMAGE_TAG"
+        docker build --build-arg SERVICE_NAME=$service -t $CI_REGISTRY_IMAGE/$service:$IMAGE_TAG -f pkg/shared/Dockerfile ./cmd/$service
       done
   artifacts:
     paths:
       - tmp/services_list.txt
 
-# Деплой Docker образов с использованием DinD
 deploy:
   stage: deploy
   image: docker:20.10.16
@@ -69,6 +52,7 @@ deploy:
   script:
     - |
       for service in $(cat tmp/services_list.txt); do
-        echo "Deploying Docker image for: $service"
-        docker push $CI_REGISTRY_IMAGE/$service:latest
+        IMAGE_TAG=${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}
+        echo "Deploying Docker image for: $service with tag: $IMAGE_TAG"
+        docker push $CI_REGISTRY_IMAGE/$service:$IMAGE_TAG
       done
