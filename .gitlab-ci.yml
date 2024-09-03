@@ -5,7 +5,6 @@ stages:
   - deploy
 
 variables:
-  GO_IMAGE: golang:1.20 # Используем актуальную версию Golang
   GIT_STRATEGY: clone   # Указываем стратегию клонирования репозитория
 
 before_script:
@@ -16,19 +15,19 @@ check_changes:
   image: alpine:3.17
   before_script:
     - echo "Installing git..."
-    - apk add --no-cache git  # Устанавливаем git в Alpine
+    - apk add --no-cache git
   script:
     - echo "Checking for changes..."
     - |
       CHANGED_SERVICE="NONE"
       if git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^API Gateway/'; then
-        CHANGED_SERVICE="API_GATEWAY"
+        CHANGED_SERVICE="API Gateway"
       elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^Deployment Service/'; then
-        CHANGED_SERVICE="DEPLOYMENT_SERVICE"
+        CHANGED_SERVICE="Deployment Service"
       elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^Integration Manager/'; then
-        CHANGED_SERVICE="INTEGRATION_MANAGER"
+        CHANGED_SERVICE="Integration Manager"
       elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^Template Service/'; then
-        CHANGED_SERVICE="TEMPLATE_SERVICE"
+        CHANGED_SERVICE="Template Service"
       elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^shared/'; then
         CHANGED_SERVICE="ALL"
       fi
@@ -37,150 +36,50 @@ check_changes:
     paths:
       - service.txt
 
-build_api_gateway:
+build_service:
   stage: build
-  image: $GO_IMAGE
+  image: docker:latest
+  services:
+    - docker:dind
   script:
-    - echo "Building API Gateway..."
-    - go build -o api-gateway ./API\ Gateway
+    - export SERVICE=$(cat service.txt)
+    - echo "Building Docker image for $SERVICE..."
+    - if [ "$SERVICE" != "ALL" ]; then
+        docker build --build-arg SERVICE_NAME="$SERVICE" -t $CI_REGISTRY_IMAGE/${SERVICE// /-}:$CI_COMMIT_SHORT_SHA -f shared/Dockerfile .;
+      else
+        docker build --build-arg SERVICE_NAME="API Gateway" -t $CI_REGISTRY_IMAGE/api-gateway:$CI_COMMIT_SHORT_SHA -f shared/Dockerfile .;
+        docker build --build-arg SERVICE_NAME="Deployment Service" -t $CI_REGISTRY_IMAGE/deployment-service:$CI_COMMIT_SHORT_SHA -f shared/Dockerfile .;
+        docker build --build-arg SERVICE_NAME="Integration Manager" -t $CI_REGISTRY_IMAGE/integration-manager:$CI_COMMIT_SHORT_SHA -f shared/Dockerfile .;
+        docker build --build-arg SERVICE_NAME="Template Service" -t $CI_REGISTRY_IMAGE/template-service:$CI_COMMIT_SHORT_SHA -f shared/Dockerfile .;
+      fi
   dependencies:
     - check_changes
   only:
     changes:
       - API Gateway/**
-      - shared/**
-
-build_deployment_service:
-  stage: build
-  image: $GO_IMAGE
-  script:
-    - echo "Building Deployment Service..."
-    - go build -o deployment-service ./Deployment\ Service
-  dependencies:
-    - check_changes
-  only:
-    changes:
       - Deployment Service/**
-      - shared/**
-
-build_integration_manager:
-  stage: build
-  image: $GO_IMAGE
-  script:
-    - echo "Building Integration Manager..."
-    - go build -o integration-manager ./Integration\ Manager
-  dependencies:
-    - check_changes
-  only:
-    changes:
       - Integration Manager/**
-      - shared/**
-
-build_template_service:
-  stage: build
-  image: $GO_IMAGE
-  script:
-    - echo "Building Template Service..."
-    - go build -o template-service ./Template\ Service
-  dependencies:
-    - check_changes
-  only:
-    changes:
       - Template Service/**
       - shared/**
 
-test_api_gateway:
-  stage: test
-  image: $GO_IMAGE
-  script:
-    - echo "Running tests for API Gateway..."
-    - go test ./API\ Gateway/...
-  dependencies:
-    - build_api_gateway
-
-test_deployment_service:
-  stage: test
-  image: $GO_IMAGE
-  script:
-    - echo "Running tests for Deployment Service..."
-    - go test ./Deployment\ Service/...
-  dependencies:
-    - build_deployment_service
-
-test_integration_manager:
-  stage: test
-  image: $GO_IMAGE
-  script:
-    - echo "Running tests for Integration Manager..."
-    - go test ./Integration\ Manager/...
-  dependencies:
-    - build_integration_manager
-
-test_template_service:
-  stage: test
-  image: $GO_IMAGE
-  script:
-    - echo "Running tests for Template Service..."
-    - go test ./Template\ Service/...
-  dependencies:
-    - build_template_service
-
-deploy_api_gateway:
+deploy_service:
   stage: deploy
   image: docker:latest
   services:
     - docker:dind
   script:
-    - echo "Building Docker image for API Gateway..."
-    - docker build -t $CI_REGISTRY_IMAGE/api-gateway:$CI_COMMIT_SHORT_SHA ./API\ Gateway
-    - echo "Pushing Docker image for API Gateway..."
-    - docker push $CI_REGISTRY_IMAGE/api-gateway:$CI_COMMIT_SHORT_SHA
+    - export SERVICE=$(cat service.txt)
+    - if [ "$SERVICE" != "ALL" ]; then
+        echo "Pushing Docker image for $SERVICE...";
+        docker push $CI_REGISTRY_IMAGE/${SERVICE// /-}:$CI_COMMIT_SHORT_SHA;
+      else
+        echo "Pushing Docker images for all services...";
+        docker push $CI_REGISTRY_IMAGE/api-gateway:$CI_COMMIT_SHORT_SHA;
+        docker push $CI_REGISTRY_IMAGE/deployment-service:$CI_COMMIT_SHORT_SHA;
+        docker push $CI_REGISTRY_IMAGE/integration-manager:$CI_COMMIT_SHORT_SHA;
+        docker push $CI_REGISTRY_IMAGE/template-service:$CI_COMMIT_SHORT_SHA;
+      fi
   only:
     - main
   dependencies:
-    - test_api_gateway
-
-deploy_deployment_service:
-  stage: deploy
-  image: docker:latest
-  services:
-    - docker:dind
-  script:
-    - echo "Building Docker image for Deployment Service..."
-    - docker build -t $CI_REGISTRY_IMAGE/deployment-service:$CI_COMMIT_SHORT_SHA ./Deployment\ Service
-    - echo "Pushing Docker image for Deployment Service..."
-    - docker push $CI_REGISTRY_IMAGE/deployment-service:$CI_COMMIT_SHORT_SHA
-  only:
-    - main
-  dependencies:
-    - test_deployment_service
-
-deploy_integration_manager:
-  stage: deploy
-  image: docker:latest
-  services:
-    - docker:dind
-  script:
-    - echo "Building Docker image for Integration Manager..."
-    - docker build -t $CI_REGISTRY_IMAGE/integration-manager:$CI_COMMIT_SHORT_SHA ./Integration\ Manager
-    - echo "Pushing Docker image for Integration Manager..."
-    - docker push $CI_REGISTRY_IMAGE/integration-manager:$CI_COMMIT_SHORT_SHA
-  only:
-    - main
-  dependencies:
-    - test_integration_manager
-
-deploy_template_service:
-  stage: deploy
-  image: docker:latest
-  services:
-    - docker:dind
-  script:
-    - echo "Building Docker image for Template Service..."
-    - docker build -t $CI_REGISTRY_IMAGE/template-service:$CI_COMMIT_SHORT_SHA ./Template\ Service
-    - echo "Pushing Docker image for Template Service..."
-    - docker push $CI_REGISTRY_IMAGE/template-service:$CI_COMMIT_SHORT_SHA
-  only:
-    - main
-  dependencies:
-    - test_template_service
+    - build_service
