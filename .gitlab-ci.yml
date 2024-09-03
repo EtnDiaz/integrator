@@ -5,7 +5,7 @@ stages:
   - deploy
 
 variables:
-  GIT_STRATEGY: clone   
+  GIT_STRATEGY: clone
 
 before_script:
   - echo "Starting GitLab CI pipeline"
@@ -14,24 +14,22 @@ check_changes:
   stage: check
   image: alpine:3.17
   before_script:
-    - echo "Installing git..."
     - apk add --no-cache git
   script:
     - echo "Checking for changes..."
-    - |
-      CHANGED_SERVICE="NONE"
-      if git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^api-gateway/'; then
-        CHANGED_SERVICE="api-gateway"
+    - CHANGED_SERVICE="none"
+    - if git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^api-gateway/'; then
+        CHANGED_SERVICE="api-gateway";
       elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^deployment-service/'; then
-        CHANGED_SERVICE="deployment-service"
+        CHANGED_SERVICE="deployment-service";
       elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^integration-manager/'; then
-        CHANGED_SERVICE="integration-manager"
+        CHANGED_SERVICE="integration-manager";
       elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^template-service/'; then
-        CHANGED_SERVICE="template-service"
+        CHANGED_SERVICE="template-service";
       elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^shared/'; then
-        CHANGED_SERVICE="all"
+        CHANGED_SERVICE="all";
       fi
-      echo $CHANGED_SERVICE > ${SERVICE}
+    - echo $CHANGED_SERVICE > service.txt
   artifacts:
     paths:
       - service.txt
@@ -42,25 +40,24 @@ build_service:
   services:
     - docker:dind
   script:
-    - export SERVICE=$(cat service.txt)
+    - SERVICE=$(cat service.txt)
     - echo "Building Docker image for $SERVICE..."
-    - if [ "$SERVICE" != "all" ]; then
+    - |
+      if [ "$SERVICE" != "all" ]; then
         docker build --build-arg SERVICE_NAME="$SERVICE" -t $CI_REGISTRY_IMAGE/${SERVICE// /-}:$CI_COMMIT_SHORT_SHA -f shared/Dockerfile .;
       else
-        docker build --build-arg SERVICE_NAME="api-gateway" -t $CI_REGISTRY_IMAGE/api-gateway:$CI_COMMIT_SHORT_SHA -f shared/Dockerfile .;
-        docker build --build-arg SERVICE_NAME="deployment-service" -t $CI_REGISTRY_IMAGE/deployment-service:$CI_COMMIT_SHORT_SHA -f shared/Dockerfile .;
-        docker build --build-arg SERVICE_NAME="integration-manager" -t $CI_REGISTRY_IMAGE/integration-manager:$CI_COMMIT_SHORT_SHA -f shared/Dockerfile .;
-        docker build --build-arg SERVICE_NAME="template-service" -t $CI_REGISTRY_IMAGE/template-service:$CI_COMMIT_SHORT_SHA -f shared/Dockerfile .;
+        for SVC in api-gateway deployment-service integration-manager template-service; do
+          docker build --build-arg SERVICE_NAME=$SVC -t $CI_REGISTRY_IMAGE/$SVC:$CI_COMMIT_SHORT_SHA -f shared/Dockerfile .;
+        done
       fi
+  artifacts:
+    paths:
+      - image.tar
   dependencies:
     - check_changes
-  # only:
-  #   changes:
-  #     - api-gateway/**
-  #     - deployment-service/**
-  #     - integration-manager/**
-  #     - template-service/**
-  #     - shared/**
+  only:
+    refs:
+      - main
 
 deploy_service:
   stage: deploy
@@ -68,18 +65,19 @@ deploy_service:
   services:
     - docker:dind
   script:
-    - export ${SERVICE}
-    - if [ "$SERVICE" != "all" ]; then
+    - SERVICE=$(cat service.txt)
+    - |
+      if [ "$SERVICE" != "all" ]; then
         echo "Pushing Docker image for $SERVICE...";
         docker push $CI_REGISTRY_IMAGE/${SERVICE// /-}:$CI_COMMIT_SHORT_SHA;
       else
         echo "Pushing Docker images for all services...";
-        docker push $CI_REGISTRY_IMAGE/api-gateway:$CI_COMMIT_SHORT_SHA;
-        docker push $CI_REGISTRY_IMAGE/deployment-service:$CI_COMMIT_SHORT_SHA;
-        docker push $CI_REGISTRY_IMAGE/integration-manager:$CI_COMMIT_SHORT_SHA;
-        docker push $CI_REGISTRY_IMAGE/template-service:$CI_COMMIT_SHORT_SHA;
+        for SVC in api-gateway deployment-service integration-manager template-service; do
+          docker push $CI_REGISTRY_IMAGE/$SVC:$CI_COMMIT_SHORT_SHA;
+        done
       fi
   only:
-    - main
+    refs:
+      - main
   dependencies:
     - build_service
