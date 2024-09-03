@@ -14,123 +14,173 @@ before_script:
 check_changes:
   stage: check
   image: alpine:3.17
-  script:
+  before_script:
     - echo "Installing git..."
     - apk add --no-cache git  # Устанавливаем git в Alpine
+  script:
     - echo "Checking for changes..."
     - |
+      CHANGED_SERVICE="NONE"
       if git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^API Gateway/'; then
-        echo "API Gateway changed."
-        echo "API_GATEWAY" > service.txt
+        CHANGED_SERVICE="API_GATEWAY"
       elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^Deployment Service/'; then
-        echo "Deployment Service changed."
-        echo "DEPLOYMENT_SERVICE" > service.txt
+        CHANGED_SERVICE="DEPLOYMENT_SERVICE"
       elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^Integration Manager/'; then
-        echo "Integration Manager changed."
-        echo "INTEGRATION_MANAGER" > service.txt
+        CHANGED_SERVICE="INTEGRATION_MANAGER"
       elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^Template Service/'; then
-        echo "Template Service changed."
-        echo "TEMPLATE_SERVICE" > service.txt
+        CHANGED_SERVICE="TEMPLATE_SERVICE"
       elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^shared/'; then
-        echo "Shared components changed. Rebuilding all services."
-        echo "ALL" > service.txt
-      else
-        echo "No significant changes detected."
-        echo "NONE" > service.txt
+        CHANGED_SERVICE="ALL"
+      fi
+      echo $CHANGED_SERVICE > service.txt
   artifacts:
     paths:
       - service.txt
 
-build:
+build_api_gateway:
   stage: build
   image: $GO_IMAGE
   script:
-    - export SERVICE=$(cat service.txt)
-    - if [ "$SERVICE" = "API_GATEWAY" ] || [ "$SERVICE" = "ALL" ]; then
-        echo "Building API Gateway...";
-        go build -o api-gateway ./API\ Gateway;
-      fi
-    - if [ "$SERVICE" = "DEPLOYMENT_SERVICE" ] || [ "$SERVICE" = "ALL" ]; then
-        echo "Building Deployment Service...";
-        go build -o deployment-service ./Deployment\ Service;
-      fi
-    - if [ "$SERVICE" = "INTEGRATION_MANAGER" ] || [ "$SERVICE" = "ALL" ]; then
-        echo "Building Integration Manager...";
-        go build -o integration-manager ./Integration\ Manager;
-      fi
-    - if [ "$SERVICE" = "TEMPLATE_SERVICE" ] || [ "$SERVICE" = "ALL" ]; then
-        echo "Building Template Service...";
-        go build -o template-service ./Template\ Service;
-      fi
-  artifacts:
-    paths:
-      - api-gateway
-      - deployment-service
-      - integration-manager
-      - template-service
+    - echo "Building API Gateway..."
+    - go build -o api-gateway ./API\ Gateway
   dependencies:
     - check_changes
+  only:
+    changes:
+      - API Gateway/**
+      - shared/**
 
-test:
+build_deployment_service:
+  stage: build
+  image: $GO_IMAGE
+  script:
+    - echo "Building Deployment Service..."
+    - go build -o deployment-service ./Deployment\ Service
+  dependencies:
+    - check_changes
+  only:
+    changes:
+      - Deployment Service/**
+      - shared/**
+
+build_integration_manager:
+  stage: build
+  image: $GO_IMAGE
+  script:
+    - echo "Building Integration Manager..."
+    - go build -o integration-manager ./Integration\ Manager
+  dependencies:
+    - check_changes
+  only:
+    changes:
+      - Integration Manager/**
+      - shared/**
+
+build_template_service:
+  stage: build
+  image: $GO_IMAGE
+  script:
+    - echo "Building Template Service..."
+    - go build -o template-service ./Template\ Service
+  dependencies:
+    - check_changes
+  only:
+    changes:
+      - Template Service/**
+      - shared/**
+
+test_api_gateway:
   stage: test
   image: $GO_IMAGE
   script:
-    - export SERVICE=$(cat service.txt)
-    - if [ "$SERVICE" = "API_GATEWAY" ] || [ "$SERVICE" = "ALL" ]; then
-        echo "Running tests for API Gateway...";
-        go test ./API\ Gateway/...;
-      fi
-    - if [ "$SERVICE" = "DEPLOYMENT_SERVICE" ] || [ "$SERVICE" = "ALL" ]; then
-        echo "Running tests for Deployment Service...";
-        go test ./Deployment\ Service/...;
-      fi
-    - if [ "$SERVICE" = "INTEGRATION_MANAGER" ] || [ "$SERVICE" = "ALL" ]; then
-        echo "Running tests for Integration Manager...";
-        go test ./Integration\ Manager/...;
-      fi
-    - if [ "$SERVICE" = "TEMPLATE_SERVICE" ] || [ "$SERVICE" = "ALL" ]; then
-        echo "Running tests for Template Service...";
-        go test ./Template\ Service/...;
-      fi
+    - echo "Running tests for API Gateway..."
+    - go test ./API\ Gateway/...
   dependencies:
-    - build
+    - build_api_gateway
 
-deploy:
+test_deployment_service:
+  stage: test
+  image: $GO_IMAGE
+  script:
+    - echo "Running tests for Deployment Service..."
+    - go test ./Deployment\ Service/...
+  dependencies:
+    - build_deployment_service
+
+test_integration_manager:
+  stage: test
+  image: $GO_IMAGE
+  script:
+    - echo "Running tests for Integration Manager..."
+    - go test ./Integration\ Manager/...
+  dependencies:
+    - build_integration_manager
+
+test_template_service:
+  stage: test
+  image: $GO_IMAGE
+  script:
+    - echo "Running tests for Template Service..."
+    - go test ./Template\ Service/...
+  dependencies:
+    - build_template_service
+
+deploy_api_gateway:
   stage: deploy
   image: docker:latest
   services:
     - docker:dind
   script:
-    - export SERVICE=$(cat service.txt)
-    - if [ "$SERVICE" != "NONE" ]; then
-        if [ "$SERVICE" = "API_GATEWAY" ] || [ "$SERVICE" = "ALL" ]; then
-            echo "Building Docker image for API Gateway...";
-            docker build -t $CI_REGISTRY_IMAGE/api-gateway:$CI_COMMIT_SHORT_SHA ./API\ Gateway;
-            echo "Pushing Docker image for API Gateway...";
-            docker push $CI_REGISTRY_IMAGE/api-gateway:$CI_COMMIT_SHORT_SHA;
-        fi
-        if [ "$SERVICE" = "DEPLOYMENT_SERVICE" ] || [ "$SERVICE" = "ALL" ]; then
-            echo "Building Docker image for Deployment Service...";
-            docker build -t $CI_REGISTRY_IMAGE/deployment-service:$CI_COMMIT_SHORT_SHA ./Deployment\ Service;
-            echo "Pushing Docker image for Deployment Service...";
-            docker push $CI_REGISTRY_IMAGE/deployment-service:$CI_COMMIT_SHORT_SHA;
-        fi
-        if [ "$SERVICE" = "INTEGRATION_MANAGER" ] || [ "$SERVICE" = "ALL" ]; then
-            echo "Building Docker image for Integration Manager...";
-            docker build -t $CI_REGISTRY_IMAGE/integration-manager:$CI_COMMIT_SHORT_SHA ./Integration\ Manager;
-            echo "Pushing Docker image for Integration Manager...";
-            docker push $CI_REGISTRY_IMAGE/integration-manager:$CI_COMMIT_SHORT_SHA;
-        fi
-        if [ "$SERVICE" = "TEMPLATE_SERVICE" ] || [ "$SERVICE" = "ALL" ]; then
-            echo "Building Docker image for Template Service...";
-            docker build -t $CI_REGISTRY_IMAGE/template-service:$CI_COMMIT_SHORT_SHA ./Template\ Service;
-            echo "Pushing Docker image for Template Service...";
-            docker push $CI_REGISTRY_IMAGE/template-service:$CI_COMMIT_SHORT_SHA;
-        fi
-      else
-        echo "No service to deploy.";
-      fi
+    - echo "Building Docker image for API Gateway..."
+    - docker build -t $CI_REGISTRY_IMAGE/api-gateway:$CI_COMMIT_SHORT_SHA ./API\ Gateway
+    - echo "Pushing Docker image for API Gateway..."
+    - docker push $CI_REGISTRY_IMAGE/api-gateway:$CI_COMMIT_SHORT_SHA
   only:
     - main
   dependencies:
-    - test
+    - test_api_gateway
+
+deploy_deployment_service:
+  stage: deploy
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - echo "Building Docker image for Deployment Service..."
+    - docker build -t $CI_REGISTRY_IMAGE/deployment-service:$CI_COMMIT_SHORT_SHA ./Deployment\ Service
+    - echo "Pushing Docker image for Deployment Service..."
+    - docker push $CI_REGISTRY_IMAGE/deployment-service:$CI_COMMIT_SHORT_SHA
+  only:
+    - main
+  dependencies:
+    - test_deployment_service
+
+deploy_integration_manager:
+  stage: deploy
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - echo "Building Docker image for Integration Manager..."
+    - docker build -t $CI_REGISTRY_IMAGE/integration-manager:$CI_COMMIT_SHORT_SHA ./Integration\ Manager
+    - echo "Pushing Docker image for Integration Manager..."
+    - docker push $CI_REGISTRY_IMAGE/integration-manager:$CI_COMMIT_SHORT_SHA
+  only:
+    - main
+  dependencies:
+    - test_integration_manager
+
+deploy_template_service:
+  stage: deploy
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - echo "Building Docker image for Template Service..."
+    - docker build -t $CI_REGISTRY_IMAGE/template-service:$CI_COMMIT_SHORT_SHA ./Template\ Service
+    - echo "Pushing Docker image for Template Service..."
+    - docker push $CI_REGISTRY_IMAGE/template-service:$CI_COMMIT_SHORT_SHA
+  only:
+    - main
+  dependencies:
+    - test_template_service
