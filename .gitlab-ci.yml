@@ -6,6 +6,7 @@ stages:
 
 variables:
   GIT_STRATEGY: clone
+  DOCKER_DRIVER: overlay2  
 
 before_script:
   - echo "Starting GitLab CI pipeline"
@@ -13,8 +14,6 @@ before_script:
 check_changes:
   stage: check
   image: alpine:3.17
-  before_script:
-    - apk add --no-cache git
   script:
     - echo "Checking for changes..."
     - CHANGED_SERVICE="none"
@@ -33,10 +32,11 @@ check_changes:
   artifacts:
     paths:
       - service.txt
+    expire_in: 1 hour
 
 build_service:
   stage: build
-  image: docker:latest
+  image: docker:20.10
   services:
     - docker:dind
   script:
@@ -57,6 +57,7 @@ build_service:
   artifacts:
     paths:
       - image.tar
+    expire_in: 1 hour
   dependencies:
     - check_changes
   only:
@@ -65,7 +66,7 @@ build_service:
 
 deploy_service:
   stage: deploy
-  image: docker:latest
+  image: docker:20.10
   services:
     - docker:dind
   script:
