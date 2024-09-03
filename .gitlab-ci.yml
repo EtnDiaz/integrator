@@ -3,19 +3,26 @@ include:
 
 variables:
   go_image: 1.22.5
+  binary_directory: bin
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_DRIVER: overlay2
+
+services:
+  - docker:20.10.16-dind
 
 stages:
-  # Component specific stages
   - format
   - build
   - test
   - verify
-  - docker-prepare
+  - prepare
+  - upload
   - docker-build
-  - docker-deploy
-  
+  - deploy
+
+# Подготовка списка сервисов
 prepare:
-  stage: docker-prepare
+  stage: prepare
   script:
     - mkdir -p tmp
     - find cmd/ -maxdepth 1 -mindepth 1 -type d -exec basename {} \; > tmp/services_list.txt
@@ -23,21 +30,45 @@ prepare:
     paths:
       - tmp/services_list.txt
 
-build_services:
-  stage: docker-build
-  image: dind
+
+# Загрузка бинарных файлов
+upload:
+  stage: upload
+  image: curlimages/curl:latest
+  rules:
+    - if: $CI_COMMIT_TAG
   script:
     - |
       for service in $(cat tmp/services_list.txt); do
-        echo "Building service: $service"
-        docker build --build-arg SERVICE_NAME=$service -t $CI_REGISTRY_IMAGE/$service:latest -f pkg/shared/Dockerfile ./cmd/$service;
+        echo "Uploading binary for: $service"
+        curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" --upload-file ${binary_directory}/$service ${PACKAGE_REGISTRY_URL}/$service-${CI_COMMIT_TAG}
       done
 
-deploy_services:
-  stage: docker-deploy
+# Сборка Docker образов для каждого микросервиса с использованием DinD
+docker-build:
+  stage: docker-build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
   script:
     - |
       for service in $(cat tmp/services_list.txt); do
-        echo "Deploying service: $service"
-        docker push $CI_REGISTRY_IMAGE/$service:latest;
+        echo "Building Docker image for: $service"
+        docker build --build-arg SERVICE_NAME=$service -t $CI_REGISTRY_IMAGE/$service:latest -f pkg/shared/Dockerfile ./cmd/$service
+      done
+  artifacts:
+    paths:
+      - tmp/services_list.txt
+
+# Деплой Docker образов с использованием DinD
+deploy:
+  stage: deploy
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  script:
+    - |
+      for service in $(cat tmp/services_list.txt); do
+        echo "Deploying Docker image for: $service"
+        docker push $CI_REGISTRY_IMAGE/$service:latest
       done
