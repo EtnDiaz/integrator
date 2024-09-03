@@ -6,38 +6,27 @@ MODULE_PATHS=(
     "internal/deployment-service"
     "internal/integration-manager"
     "internal/template-service"
+    "pkg/shared"
     "pkg/shared/config"
     "pkg/shared/middlewares"
     "pkg/shared/services"
     "pkg/shared/utils"
 )
 
-# Loop over each path
+# Remove existing go.mod and go.sum files
 for path in "${MODULE_PATHS[@]}"; do
-    # Navigate to the module directory
     cd "$path" || exit
 
-    # Remove existing go.mod and go.sum files if they exist
-    if [ -f "go.mod" ]; then
-        echo "Removing existing go.mod in $path"
-        rm go.mod
-    fi
+    rm go.mod go.sum
 
-    if [ -f "go.sum" ]; then
-        echo "Removing existing go.sum in $path"
-        rm go.sum
-    fi
+    module_path="gitlab.com/roneeSoft/integrator/${path//\//\/}"
+    go mod init "$module_path"
 
-    # Initialize a new Go module
-    echo "Initializing new Go module in $path"
-    go mod init "gitlab.com/roneeSoft/integrator/$path"
-
-    # Tidy up the module's dependencies
-    echo "Tidying up Go module dependencies in $path"
-    go mod tidy
-
-    # Return to the root directory
     cd - || exit
 done
 
-echo "Go module reinitialization complete."
+# Go back to the root directory
+cd "$(dirname "$0")" || exit
+
+# Tidy up the modules
+go mod tidy

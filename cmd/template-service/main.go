@@ -1,17 +1,17 @@
 package main
 
 import (
-    "template-service/routes"
-    "shared/config"
-    "log"
+	"gitlab.com/roneeSoft/integrator/internal/template-service/routes"
+	"gitlab.com/roneeSoft/integrator/pkg/shared/config"
+	"log"
 )
 
 func main() {
-    config.LoadConfig()
+	config.LoadConfig()
 
-    router := routes.SetupRouter()
+	router := routes.SetupRouter()
 
-    if err := router.Run(":8083"); err != nil {
-        log.Fatalf("Failed to run server: %v", err)
-    }
+	if err := router.Run(":8083"); err != nil {
+		log.Fatalf("Failed to run server: %v", err)
+	}
 }
