@@ -11,7 +11,6 @@ func main() {
 
     router := routes.SetupRouter()
 
-    // Запуск сервера
     if err := router.Run(":8082"); err != nil {
         log.Fatalf("Failed to run server: %v", err)
     }
