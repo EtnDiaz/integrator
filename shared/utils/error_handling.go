@@ -1,4 +1,3 @@
-// shared/utils/error_handling.go
 package utils
 
 import "errors"

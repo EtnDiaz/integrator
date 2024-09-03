@@ -7,6 +7,7 @@ ARG SERVICE_NAME
 
 COPY ${SERVICE_NAME}/ ./
 
+RUN go mod init
 
 RUN go mod tidy
 RUN go build -o ${SERVICE_NAME}

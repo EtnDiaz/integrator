@@ -9,7 +9,7 @@ import (
     "github.com/dgrijalva/jwt-go"
 )
 
-var jwtSecret = []byte("your-secret-key") // Секретный ключ для подписи и валидации JWT
+var jwtSecret = []byte("11222333444")
 
 func AuthMiddleware() gin.HandlerFunc {
     return func(c *gin.Context) {
