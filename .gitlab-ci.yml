@@ -1,106 +1,12 @@
-stages:
-  - build_shared
-  - check
-  - build
-  - test
-  - deploy
+include:
+  - component: gitlab.com/components/go/full-pipeline@1.0.0
 
 variables:
-  GIT_STRATEGY: clone
-  DOCKER_DRIVER: overlay2
+  go_image: 1.22.5
 
-before_script:
-  - echo "Starting GitLab CI pipeline"
-
-
-build_shared:
-  stage: build_shared
-  image: docker:20.10
-  services:
-    - docker:dind
-  script:
-    - docker build -t $CI_REGISTRY_IMAGE/shared:latest -f shared/Dockerfile .
-
-
-check_changes:
-  stage: check
-  image: alpine:3.17
-  before_script:
-    - apk add --no-cache git
-  script:
-    - echo "Checking for changes..."
-    - CHANGED_SERVICE="none"
-    - if git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^api-gateway/'; then
-        CHANGED_SERVICE="api-gateway";
-      elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^deployment-service/'; then
-        CHANGED_SERVICE="deployment-service";
-      elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^integration-manager/'; then
-        CHANGED_SERVICE="integration-manager";
-      elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^template-service/'; then
-        CHANGED_SERVICE="template-service";
-      elif git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -q '^shared/'; then
-        CHANGED_SERVICE="all";
-      fi
-    - echo $CHANGED_SERVICE > service.txt
-  artifacts:
-    paths:
-      - service.txt
-    expire_in: 1 hour
-
-build_service:
-  stage: build
-  image: docker:20.10
-  services:
-    - docker:dind
-  script:
-    - SERVICE=$(cat service.txt)
-    - if [ "$SERVICE" = "none" ]; then
-        echo "No significant changes detected. Skipping build.";
-        exit 0;
-      fi
-    - echo "Building Docker image for $SERVICE..."
-    - |
-      if [ "$SERVICE" != "all" ]; then
-        docker build --build-arg SERVICE_NAME="$SERVICE" -t $CI_REGISTRY_IMAGE/${SERVICE// /-}:$CI_COMMIT_SHORT_SHA -f shared/Dockerfile .;
-      else
-        for SVC in api-gateway deployment-service integration-manager template-service; do
-          docker build --build-arg SERVICE_NAME=$SVC -t $CI_REGISTRY_IMAGE/$SVC:$CI_COMMIT_SHORT_SHA -f shared/Dockerfile .;
-        done
-      fi
-  artifacts:
-    paths:
-      - image.tar
-    expire_in: 1 hour
-  dependencies:
-    - check_changes
-  only:
-    refs:
-      - main
-
-deploy_service:
-  stage: deploy
-  image: docker:20.10
-  services:
-    - docker:dind
-  script:
-    - SERVICE=$(cat service.txt)
-    - if [ "$SERVICE" = "none" ]; then
-        echo "No significant changes detected. Skipping deploy.";
-        exit 0;
-      fi
-    - echo "Deploying Docker image for $SERVICE..."
-    - |
-      if [ "$SERVICE" != "all" ]; then
-        echo "Pushing Docker image for $SERVICE...";
-        docker push $CI_REGISTRY_IMAGE/${SERVICE// /-}:$CI_COMMIT_SHORT_SHA;
-      else
-        echo "Pushing Docker images for all services...";
-        for SVC in api-gateway deployment-service integration-manager template-service; do
-          docker push $CI_REGISTRY_IMAGE/$SVC:$CI_COMMIT_SHORT_SHA;
-        done
-      fi
-  only:
-    refs:
-      - main
-  dependencies:
-    - build_service
+stages:
+  # Component specific stages
+  - format
+  - build
+  - test
+  - verify
