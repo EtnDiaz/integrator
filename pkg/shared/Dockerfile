@@ -3,11 +3,12 @@ FROM golang:1.22.5 AS builder
 WORKDIR /app
 
 COPY go.mod go.sum ./
+
 RUN go mod download
 
-COPY pkg/shared/middlewares /app/pkg/shared/middlewares
-COPY pkg/shared/utils /app/pkg/shared/utils
-COPY pkg/shared/config /app/pkg/shared/config
+COPY pkg/shared/ /app/pkg/shared/
+
+COPY internal/ /app/internal/
 
 ARG SERVICE_NAME
 
